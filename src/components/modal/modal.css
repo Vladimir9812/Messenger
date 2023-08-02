@@ -12,7 +12,7 @@
 	left: 0;
 	background-color: rgba(0 0 0 / 40%);
 	transition: opacity 0.5s;
-	z-index: 10000;
+	z-index: 9999;
 
 	.modal {
 		position: relative;
@@ -28,6 +28,11 @@
 			position: absolute;
 			top: 15px;
 			right: 15px;
+		}
+
+		.title {
+			font-size: 18px;
+			margin: 0 auto 16px;
 		}
 	}
 

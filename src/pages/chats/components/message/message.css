@@ -3,7 +3,7 @@
 .message {
   padding: 4px 0;
 
-	&__status {
+	&__time {
 		display: flex;
 		align-items: center;
 		gap: 4px;
@@ -32,7 +32,7 @@
       border-bottom-right-radius: 0;
       background: #effdde;
 
-      .message__status {
+      .message__time {
         color: #5fbe67;
       }
     }
@@ -41,7 +41,7 @@
       margin-right: auto;
       border-bottom-left-radius: 0;
 
-      .message__status {
+      .message__time {
         color: var(--text-gray-color);
       }
     }

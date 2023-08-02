@@ -1,0 +1,12 @@
+.remove-user {
+	display: flex;
+	flex-direction: column;
+	gap: 20px;
+	text-align: center;
+
+	&-users {
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+	}
+}

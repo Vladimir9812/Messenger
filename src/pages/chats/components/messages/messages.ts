@@ -1,15 +1,21 @@
-import { ActionList, AddUser, ArrowLink, Avatar, Button, Input, Modal, Popup, RemoveUser } from '@components';
-import { Block } from '@services';
+import {
+	ActionList, AddUser, ArrowLink, Avatar, Button, ChangeAvatar, Input, Modal, Popup, RemoveUser
+} from '@components';
+import { ConnectBlock, Notifier, Store, WSEvents, WSStatus, WSTransport } from '@services';
+import { CHATS_PATH, WS_PATH } from '@constants';
+import { ChatsController } from '@controllers';
+import {
+	AuthUser, Chats, isEnterEvent, SelectedChatInfo, SelectedChatUsers
+} from '@utilities';
+import { ChatMessageResponse, ChatsResponse, ChatTokenResponse } from '@models';
 
-import * as MOCK from '../../../../mock.json';
 import { Message } from '../message/message';
-import { Chat, Message as IMessage } from '../../chats.model';
 
 import MessagesTemplate from './messages.hbs';
 import './messages.css';
 
 interface Props {
-  chat?: Chat;
+  chat: ChatsResponse;
 }
 
 interface SuperProps extends Props {
@@ -17,111 +23,194 @@ interface SuperProps extends Props {
   backLink: ArrowLink;
   chatAvatar: Avatar;
 	menuButton: Button;
-	clipButton: Button;
   messageInput: Input;
   sendButton: Button;
-	userActionsPopup: Popup;
-	clipActionsPopup: Popup;
-	addUserModal: Modal;
-	removeUserModal: Modal;
 }
 
-export class Messages extends Block<SuperProps> {
+export class Messages extends ConnectBlock<SuperProps> {
+
+	changingAvatar = false;
+
+	addUserModal = new Modal({ content: new AddUser() });
+	removeUserModal = new Modal({ content: new RemoveUser() });
+	changeChatAvatarModal = new Modal({
+		content: new ChangeAvatar( { onSaveFile: this.changedChatAvatar.bind(this) })
+	});
+
+	actionsPopup = new Popup({
+		content: new ActionList({
+			items: [
+				new Button({
+					text: 'Добавить пользователей',
+					imgSrc: 'icons/add-user.svg',
+					imgSize: 20,
+					noStyles: true,
+					onClick: () => this.addUserModal.show()
+				}),
+				new Button({
+					text: 'Удалить пользователей',
+					imgSrc: 'icons/remove-user.svg',
+					imgSize: 20,
+					noStyles: true,
+					onClick: () => this.removeUserModal.show()
+				}),
+				new Button({
+					text: 'Удалить чат',
+					danger: true,
+					noStyles: true,
+					onClick: this.deleteChat.bind(this)
+				})
+			]
+		}),
+		align: 'end'
+	});
+
+	private _socketClient: WSTransport | null = null;
+
+	get chat(): ChatsResponse {
+		return this.props.chat;
+	}
 
   constructor(props: Props) {
     const superProps: SuperProps = {
       ...props,
-      messages: (props.chat ? (MOCK.messages as Record<string, IMessage[]>)[props.chat.id] : [])
-        .map(message => new Message({ message, profileId: MOCK.profile.id })),
-      backLink: new ArrowLink({ attr: { href: '/chats' }, reversed: true }),
-      chatAvatar: new Avatar({ imgSrc: props.chat?.avatar || '', mode: 'small' }),
+      messages: [],
+      backLink: new ArrowLink({ attr: { href: CHATS_PATH }, reversed: true }),
+			chatAvatar: new Avatar({
+				imgSrc: props.chat.avatar,
+				mode: 'small',
+				hover: true,
+				onClick: () => this.changeChatAvatarModal.show()
+			}),
 			menuButton: new Button({
 				imgSrc: 'icons/menu.svg',
 				imgSize: 16,
 				noStyles: true,
-				onClick: e => this.props.userActionsPopup.attach(e)
-			}),
-			clipButton: new Button({
-				imgSrc: 'icons/clip.svg',
-				imgSize: 26,
-				noStyles: true,
-				onClick: e => this.props.clipActionsPopup.attach(e)
+				onClick: e => this.actionsPopup.attach(e)
 			}),
       messageInput: new Input({
         attr: {
           name: 'message',
           value: '',
           placeholder: 'Сообщение'
-        }
-      }),
+        },
+				onKeyUp: e => isEnterEvent(e) && this.sendMessage()
+			}),
       sendButton: new Button({
         imgSrc: 'icons/arrow-right.svg',
         rounded: true,
-				onClick: () => this.onSendMessage()
-      }),
-			userActionsPopup: new Popup({
-				content: new ActionList({
-					items: [
-						new Button({
-							text: 'Добавить пользователя',
-							imgSrc: 'icons/add-user.svg',
-							imgSize: 20,
-							noStyles: true,
-							onClick: () => this.props.addUserModal.show()
-						}),
-						new Button({
-							text: 'Удалить пользователя',
-							imgSrc: 'icons/remove-user.svg',
-							imgSize: 20,
-							noStyles: true,
-							onClick: () => this.props.removeUserModal.show()
-						})
-					]
-				}),
-				align: 'end'
-			}),
-			clipActionsPopup: new Popup({
-				content: new ActionList({
-					items: [
-						new Button({
-							text: 'Фото или Видео',
-							imgSrc: 'icons/chat-image.svg',
-							imgSize: 20,
-							noStyles: true
-						}),
-						new Button({
-							text: 'Файл',
-							imgSrc: 'icons/chat-file.svg',
-							imgSize: 20,
-							noStyles: true
-						}),
-						new Button({
-							text: 'Локация',
-							imgSrc: 'icons/chat-location.svg',
-							imgSize: 20,
-							noStyles: true
-						})
-					]
-				}),
-			}),
-			addUserModal: new Modal({ content: new AddUser() }),
-			removeUserModal: new Modal({ content: new RemoveUser() })
+				onClick: () => this.sendMessage()
+      })
     };
 
-    super('div', 'messages', superProps);
+    super('div', 'messages', superProps, SelectedChatInfo);
+
+		ChatsController.getChatUsers(this.chat.id);
+		ChatsController.getChatToken(this.chat.id).then(this._initWSClient.bind(this));
   }
 
-	onSendMessage() {
-		const message = this.props.messageInput.getValue();
-
-		if (!message) {
+	private _initWSClient({ token }: ChatTokenResponse) {
+		if (!token) {
 			return;
 		}
 
-		console.log('message', message);
+		const authUser = Store.getState(AuthUser)!;
+
+		this._socketClient = new WSTransport(`${WS_PATH}/${authUser.id}/${this.chat.id}/${token}`);
+		this._socketClient.connect();
+
+		this._socketClient.on(WSEvents.OPEN, () => this._socketClient?.send({ content: '0', type: 'get old' }));
+		this._socketClient.on(WSEvents.MESSAGE, this._updateMessages.bind(this));
+		this._socketClient.on(WSEvents.ERROR, message => Notifier.error(message));
 	}
 
-  render(): DocumentFragment {
-    return this.compile(MessagesTemplate, { chatName: this.props.chat?.title });
+	private _updateMessages(data: ChatMessageResponse | ChatMessageResponse[]) {
+		const messages = this.props.messages;
+		const newMessages = Array.isArray(data) ? data.reverse() : [data];
+
+		this.setProps({
+			messages: [...messages, ...newMessages.map(message => new Message({ message }))]
+		});
+
+		const chatUsers = Store.getState(SelectedChatUsers);
+
+		if (!chatUsers || Array.isArray(data)) {
+			return;
+		}
+
+		const chats = Store.getState(Chats).map(chat => {
+			if (chat.id !== this.chat.id) {
+				return chat;
+			}
+
+			return {
+				...chat,
+				last_message: {
+					user: chatUsers.find(user => user.id === data.user_id),
+					time: data.time,
+					content: data.content
+				}
+			};
+		});
+
+		Store.updateState('chats', chats);
+	}
+
+	onStoreUpdated(chat: ChatsResponse) {
+		if (!chat) {
+			return;
+		}
+
+		this.setProps({ chat });
+		this.props.chatAvatar.setProps({ imgSrc: chat.avatar });
+	}
+
+	changedChatAvatar(file: File) {
+		if (this.changingAvatar) {
+			return;
+		}
+
+		const data = new FormData();
+		data.append('chatId', this.chat.id.toString());
+		data.append('avatar', file);
+
+		this.changingAvatar = true;
+
+		ChatsController.changeChatAvatar(data)
+			.then(() => {
+				this.changingAvatar = false;
+				this.changeChatAvatarModal.hide();
+			});
+	}
+
+	sendMessage() {
+		const message = this.props.messageInput.getValue();
+
+		if (!message || this._socketClient?.status !== WSStatus.OPEN) {
+			return;
+		}
+
+		this._socketClient.send({ content: message, type: 'message' });
+		this.props.messageInput.setValue('');
+	}
+
+	deleteChat() {
+		ChatsController.deleteChat({ chatId: this.chat.id });
+	}
+
+	componentWillUnmount() {
+		super.componentWillUnmount();
+		[
+			this.addUserModal,
+			this.removeUserModal,
+			this.changeChatAvatarModal,
+			this.actionsPopup
+		].forEach(comp => comp.componentWillUnmount());
+
+		this._socketClient && this._socketClient.close();
+	}
+
+	render(): DocumentFragment {
+    return this.compile(MessagesTemplate, { chatName: this.chat.title });
   }
 }

@@ -1,0 +1,21 @@
+.user-searcher {
+	display: flex;
+	flex-direction: column;
+	gap: 20px;
+
+	&__field {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+
+		.fieldset {
+			flex-grow: 1;
+		}
+	}
+
+	&__results {
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+	}
+}

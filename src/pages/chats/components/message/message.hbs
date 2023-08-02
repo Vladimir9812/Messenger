@@ -1,15 +1,8 @@
 <div class="message">
   <div class="{{ className }}">
     {{ content }}
-    <div class="message__status">
+    <div class="message__time">
       {{{ time }}}
-      {{#if hasStatus}}
-        {{#if read}}
-          <img src="icons/status_read.svg" alt="status"/>
-        {{else}}
-          <img src="icons/status_unread.svg" alt="status"/>
-        {{/if}}
-			{{/if}}
     </div>
   </div>
 </div>

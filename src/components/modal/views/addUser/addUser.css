@@ -1,0 +1,9 @@
+.add-user {
+	display: flex;
+	flex-direction: column;
+	gap: 20px;
+
+	&__add-btn {
+		margin-top: 6px;
+	}
+}
