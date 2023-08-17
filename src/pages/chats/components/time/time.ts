@@ -17,6 +17,8 @@ export class Time extends Block<Props> {
     const hours = time.getHours();
     const minutes = time.getMinutes();
 
-    return this.compile(null, { time: `${hours}:${minutes}` });
+    return this.compile(null, {
+			time: `${hours}:${minutes < 10 ? '0' + minutes : minutes}`
+		});
   }
 }

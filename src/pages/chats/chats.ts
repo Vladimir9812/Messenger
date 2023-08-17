@@ -1,44 +1,67 @@
-import { classNames, getQueryParam } from '@utilities';
-import { Block } from '@services';
+import { classNames, Chats, getQueryParam } from '@utilities';
+import { ConnectBlock, Store, Router } from '@services';
+import { ChatsResponse } from '@models';
+import { CHATS_PATH } from '@constants';
 
-import * as MOCK from '../../mock.json';
-
-import { Chat, Messages, Panel } from './components';
+import { Chat, Messages, NoMessages, Panel } from './components';
 import ChatsTemplate from './chats.hbs';
-import { Chat as IChat } from './chats.model';
 import './chats.css';
 
 interface SuperProps {
   panel: Panel;
-  messages: Messages;
+  messages: Messages | NoMessages;
   messagesClassName: string;
 }
 
-export class ChatsPage extends Block<SuperProps> {
+function getChatList() {
+	const chats = Store.getState(Chats);
+
+	const selectedChatId = +(getQueryParam('viewId') as string) || null;
+	const selectedChat: ChatsResponse | undefined = chats.find(chat => chat.id === selectedChatId);
+
+	selectedChatId && Store.updateState('selectedChat.id', selectedChatId);
+
+	const chatList: Chat[] = chats.map(chat => new Chat({
+		chat: {
+			...chat,
+			selected: selectedChatId === chat.id
+		}
+	}));
+
+	return { chats, chatList, selectedChat };
+}
+
+export class ChatsPage extends ConnectBlock<SuperProps> {
 
   constructor() {
-    const selectedChatId = getQueryParam('viewId');
-    const selectedChat: IChat | undefined = MOCK.chats.find(chat => chat.id === selectedChatId);
+		const { chatList, selectedChat } = getChatList();
 
-    const chatList: Chat[] = MOCK.chats.map(chat => new Chat({
-      chat: {
-        ...chat,
-        selected: selectedChatId === chat.id
-      }
-    }));
+		const superProps: SuperProps = {
+			panel: new Panel({ chatList }),
+			messages: selectedChat ? new Messages({ chat: selectedChat }) : new NoMessages(),
+			messagesClassName: classNames(
+				'chats-messages', { 'chats-messages_hidden': !selectedChat }
+			)
+		};
 
-    const superProps: SuperProps = {
-      panel: new Panel({ chatList }),
-      messages: new Messages({ chat: selectedChat }),
-      messagesClassName: classNames(
-        'chats-messages', { 'chats-messages_hidden': !selectedChatId }
-      )
-    };
-
-    super('div', 'chats', superProps);
+    super('div', 'chats', superProps, Chats);
   }
 
-  render(): DocumentFragment {
+	onStoreUpdated() {
+		const { chats, chatList, selectedChat } = getChatList();
+		this.props.panel.setProps({ chatList });
+
+		if (!chats.find(({ id }) => id === selectedChat?.id)) {
+			Router.go(CHATS_PATH);
+		}
+	}
+
+	componentWillUnmount() {
+		super.componentWillUnmount();
+		Store.updateState('selectedChat', null);
+	}
+
+	render(): DocumentFragment {
     return this.compile(ChatsTemplate, { messagesClassName: this.props.messagesClassName });
   }
 }
