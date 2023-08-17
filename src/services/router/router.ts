@@ -1,6 +1,5 @@
-import { APP_ID } from '@constants';
-import { AuthUser } from '@utilities';
-
+import { APP_ID } from '../../constants';
+import { AuthUser } from '../../utils/selectors';
 import { Store } from '../store';
 
 import { ConstructableBlock, Route } from './route';

@@ -1,6 +1,6 @@
 import { v4 as makeUUID } from 'uuid';
-import { isEqual } from '@utilities';
 
+import { isEqual } from '../../utils/isEqual';
 import { EventBus } from '../eventBus';
 
 export type BaseProps = Record<string, any>;
@@ -20,6 +20,7 @@ export abstract class Block<T extends BaseProps = NonNullable<unknown>> {
   static EVENTS = {
     INIT: 'init',
     FLOW_CDM: 'flow:component-did-mount',
+    FLOW_CSU: 'flow:component-should-update',
     FLOW_CDU: 'flow:component-did-update',
     FLOW_CWU: 'flow:component-will-unmount',
     FLOW_RENDER: 'flow:render'
@@ -107,6 +108,7 @@ export abstract class Block<T extends BaseProps = NonNullable<unknown>> {
   private _registerEvents() {
     this._eventBus.on(Block.EVENTS.INIT, this._init.bind(this));
     this._eventBus.on(Block.EVENTS.FLOW_CDM, this._componentDidMount.bind(this));
+    this._eventBus.on(Block.EVENTS.FLOW_CSU, this._shouldComponentUpdate.bind(this));
     this._eventBus.on(Block.EVENTS.FLOW_CDU, this._componentDidUpdate.bind(this));
     this._eventBus.on(Block.EVENTS.FLOW_CWU, this._componentWillUnmount.bind(this));
     this._eventBus.on(Block.EVENTS.FLOW_RENDER, this._render.bind(this));
@@ -137,17 +139,24 @@ export abstract class Block<T extends BaseProps = NonNullable<unknown>> {
     });
   }
 
-  componentDidUpdate(oldProps: T, newProps: T) {
+  shouldComponentUpdate(oldProps: T, newProps: T) {
     return !isEqual(oldProps, newProps);
   }
 
-  private _componentDidUpdate(oldProps: T, newProps: T) {
-    if (!this.componentDidUpdate(oldProps, newProps)) {
+  private _shouldComponentUpdate(oldProps: T, newProps: T) {
+    if (!this.shouldComponentUpdate(oldProps, newProps)) {
       return;
     }
 
     this._eventBus.emit(Block.EVENTS.FLOW_RENDER);
   }
+
+	componentDidUpdate() {
+	}
+
+	private _componentDidUpdate() {
+		this.componentDidUpdate();
+	}
 
 	componentWillUnmount() {
 	}
@@ -195,7 +204,7 @@ export abstract class Block<T extends BaseProps = NonNullable<unknown>> {
 
     if (this._shouldUpdate) {
       this._shouldUpdate = false;
-      this._eventBus.emit(Block.EVENTS.FLOW_CDU, oldProps, this.props);
+      this._eventBus.emit(Block.EVENTS.FLOW_CSU, oldProps, this.props);
     }
   }
 
@@ -262,6 +271,8 @@ export abstract class Block<T extends BaseProps = NonNullable<unknown>> {
     this.element.appendChild(block);
 
     this._addEvents();
+
+		this._eventBus.emit(Block.EVENTS.FLOW_CDU);
   }
 
   getContent() {

@@ -1,5 +1,5 @@
 import { ArrowLink, Button, CreateChat, Input, Modal } from '@components';
-import { Block } from '@services';
+import { Block, ChildrenProps } from '@services';
 import { SETTINGS_PATH } from '@constants';
 import { isEnterEvent } from '@utilities';
 
@@ -53,6 +53,11 @@ export class Panel extends Block<SuperProps> {
 
 		this.allUserChats = this.props.chatList;
   }
+
+	setProps(newProps: Partial<ChildrenProps | SuperProps>) {
+		super.setProps(newProps);
+		this.allUserChats = this.props.chatList;
+	}
 
 	searchChats() {
 		const value = this.props.searchInput.getValue();

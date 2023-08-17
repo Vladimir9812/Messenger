@@ -1,5 +1,5 @@
-import { ChatsResponse, ChatUserResponse, UserResponse } from '@models';
-import { set } from '@utilities';
+import { ChatsResponse, ChatUserResponse, UserResponse } from '../models/api';
+import { set } from '../utils/set';
 
 import { EventBus } from './eventBus';
 

@@ -1,5 +1,4 @@
-import { Page } from '@layout';
-
+import { Page } from '../../layout/page/page';
 import { Block } from '../block/block';
 
 export type ConstructableBlock = new () => Block;

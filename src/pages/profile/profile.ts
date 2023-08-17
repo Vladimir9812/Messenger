@@ -139,7 +139,9 @@ export class ProfilePage extends ConnectBlock<SuperProps> {
 			onSendData: data => this.changeProfile(data)
 		});
 
-		form.patchValue(Store.getState(AuthUser)!);
+		if (state !== 'password') {
+			form.patchValue(Store.getState(AuthUser)!);
+		}
 
     const superProps: SuperProps = {
       avatar: new Avatar({

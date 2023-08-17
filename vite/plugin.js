@@ -1,4 +1,4 @@
-import Handlebars from 'handlebars';
+const Handlebars = require('handlebars');
 
 export default function handlebars() {
   const fileRegexp = /\.hbs$|\.handlebars$/;

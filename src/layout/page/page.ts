@@ -1,4 +1,4 @@
-import { Block } from '@services';
+import { Block } from '../../services/block/block';
 
 import './page.css';
 
