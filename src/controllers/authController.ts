@@ -8,7 +8,7 @@ import { ChatsController } from './chatsController';
 
 class AuthControllerClass {
 
-	private _interval: ReturnType<typeof setInterval> | null = null;
+	private _interval: number | null = null;
 
 	signup(data: SignUpRequest): Promise<void> {
 		return AuthAPI.signup(data)
@@ -29,7 +29,7 @@ class AuthControllerClass {
 			.then(data => Store.updateState('user', data))
 			.then(ChatsController.getAllChats)
 			.then(() => {
-				this._interval = setInterval(ChatsController.getAllChats, CHATS_REFRESH_TIME);
+				this._interval = setInterval(ChatsController.getAllChats, CHATS_REFRESH_TIME) as unknown as number;
 			})
 			.catch(err => {
 				showServerError(err);
@@ -41,7 +41,7 @@ class AuthControllerClass {
 		return AuthAPI.logout()
 			.then(() => Store.updateState('user', null))
 			.then(() => {
-				clearInterval(this._interval as number);
+				clearInterval(this._interval!);
 				this._interval = null;
 			})
 			.then(() => Router.go(LOGIN_PATH))

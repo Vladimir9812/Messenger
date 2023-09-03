@@ -1,4 +1,4 @@
-import { isEmpty } from '@utilities';
+import { isEmpty } from '../utils/isEmpty';
 
 enum Method {
   GET = 'GET',
@@ -10,7 +10,7 @@ enum Method {
 type RequestHeaders = Record<string, string>;
 type RequestData = Record<string, any>;
 
-type HTTPMethod = <T=void>(url: string, headers?: RequestHeaders, data?: RequestData) => Promise<T>;
+type HTTPMethod = <T = any>(url: string, headers?: RequestHeaders, data?: RequestData) => Promise<T>;
 
 function queryStringify(data: Record<string, any>) {
   return Object.entries(data).reduce((acc, [key, value], index) => {
@@ -69,7 +69,7 @@ export class HTTPTransport {
 				const status = xhr.status || 0;
 
 				if (status >= 200 && status < 300) {
-					resolve(xhr.response);
+					resolve(xhr.response || xhr.responseText);
 				} else {
 					const message = {
 						'0': 'Abort',

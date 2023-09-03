@@ -65,10 +65,16 @@ export class Messages extends ConnectBlock<SuperProps> {
 		align: 'end'
 	});
 
+	scrollPosition: number = 0;
+
 	private _socketClient: WSTransport | null = null;
 
 	get chat(): ChatsResponse {
 		return this.props.chat;
+	}
+
+	get messagesEl(): HTMLElement | null {
+		return this.element.querySelector('.messages-list');
 	}
 
   constructor(props: Props) {
@@ -126,11 +132,16 @@ export class Messages extends ConnectBlock<SuperProps> {
 
 	private _updateMessages(data: ChatMessageResponse | ChatMessageResponse[]) {
 		const messages = this.props.messages;
-		const newMessages = Array.isArray(data) ? data.reverse() : [data];
+		const isOldMessages = Array.isArray(data);
+		const newMessages = isOldMessages ? data.reverse() : [data];
 
 		this.setProps({
 			messages: [...messages, ...newMessages.map(message => new Message({ message }))]
 		});
+
+		if (isOldMessages) {
+			this.messagesEl?.scrollTo({ top: this.messagesEl?.clientHeight, behavior: 'smooth' });
+		}
 
 		const chatUsers = Store.getState(SelectedChatUsers);
 
@@ -198,6 +209,10 @@ export class Messages extends ConnectBlock<SuperProps> {
 		ChatsController.deleteChat({ chatId: this.chat.id });
 	}
 
+	componentDidUpdate() {
+		this.messagesEl?.scrollTo({ top: this.scrollPosition });
+	}
+
 	componentWillUnmount() {
 		super.componentWillUnmount();
 		[
@@ -211,6 +226,10 @@ export class Messages extends ConnectBlock<SuperProps> {
 	}
 
 	render(): DocumentFragment {
+		if (this.messagesEl) {
+			this.scrollPosition = this.messagesEl.scrollTop;
+		}
+
     return this.compile(MessagesTemplate, { chatName: this.chat.title });
   }
 }

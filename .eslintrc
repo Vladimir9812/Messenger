@@ -6,7 +6,7 @@
   ],
   "parser": "@typescript-eslint/parser",
   "plugins": ["import", "@typescript-eslint"],
-  "ignorePatterns": ["dist/**", "server.js", "vite.config.js", "script.js"],
+  "ignorePatterns": ["dist/**", "mocha/**", "vite/**", "server.js", "vite.config.js"],
   "rules" : {
     "semi": "warn",
     "quotes": ["warn", "single"],
